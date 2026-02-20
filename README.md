@@ -78,18 +78,18 @@ lib/
 
 ```
 assets/
-├── gfx/                  # Gráficos del juego
+├── images/                # Imágenes del juego
 │   ├── character.png    # Sprites del personaje
 │   ├── tiles.png        # Tiles del mundo
-│   └── libros.png       # Iconos de libros
-└── maps/
+│   ├── libros.png       # Iconos de libros
+│   ├── Overworld.png   # Sprites del mundo exterior
+│   ├── cave.png         # Sprites de cuevas
+│   ├── Inner.png        # Sprites de interiores
+│   ├── objects.png      # Objetos del juego
+│   ├── font.png         # Fuente del juego
+│   └── NPC_test.png     # Sprites de NPC
+└── tiles/
     └── world_map.tmx    # Mapa del mundo (formato Tiled)
-
-gfx/                     # Gráficos adicionales
-├── Overworld.png        # Sprites del mundo exterior
-├── cave.png             # Sprites de cuevas
-├── Inner.png            # Sprites de interiores
-└── objects.png          # Objetos del juego
 ```
 
 ## 🚀 Cómo Ejecutar
