@@ -1,12 +1,10 @@
 import 'dart:ui';
 
-import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/sprite.dart';
 import 'package:flame_tiled/flame_tiled.dart';
-import 'package:tiled/tiled.dart';
 
 import '../models/game_item.dart';
 import '../models/verse_fragment.dart';
@@ -30,7 +28,7 @@ class RpgGameWorld extends FlameGame
   Future<void> onLoad() async {
     await super.onLoad();
     final tiled = await TiledComponent.load(
-      'maps/world_map.tmx',
+      'world_map.tmx',
       Vector2.all(16),
     );
     add(tiled);
@@ -69,12 +67,12 @@ class RpgGameWorld extends FlameGame
       }
     }
 
-    final characterImage = await images.load('gfx/character.png');
+    final characterImage = await images.load('character.png');
     _playerSpriteSheet = SpriteSheet(
       image: characterImage,
       srcSize: Vector2.all(32),
     );
-    final itemImage = await images.load('gfx/libros.png');
+    final itemImage = await images.load('libros.png');
     _itemSprite = Sprite(itemImage);
 
     player = PlayerComponent(
