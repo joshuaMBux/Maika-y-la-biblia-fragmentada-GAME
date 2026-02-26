@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
@@ -9,24 +10,36 @@ class ItemComponent extends SpriteComponent with CollisionCallbacks {
   final void Function(VerseFragment verse) onCollected;
 
   ItemComponent({
-    required this.verse,
-    required this.onCollected,
     required Sprite sprite,
     required Vector2 position,
+    required this.onCollected,
+    required this.verse,
+    double scale = 3.0,
   }) : super(
           sprite: sprite,
-          size: Vector2.all(32),
           position: position,
+          size: Vector2(16, 16) * scale, // ajustar si el sprite no es 16x16 real
+          anchor: Anchor.center,
         );
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    
+    // Pixel art nítido
+    paint.filterQuality = FilterQuality.none;
+
     add(
-      RectangleHitbox()
-        ..collisionType = CollisionType.passive
-        ..isSolid = false,
+      RectangleHitbox(
+        size: size * 0.6,
+        anchor: Anchor.center,
+      )..collisionType = CollisionType.active,
     );
+  }
+
+  void collect() {
+    onCollected(verse);
+    removeFromParent();
   }
 
   @override
@@ -36,8 +49,7 @@ class ItemComponent extends SpriteComponent with CollisionCallbacks {
   ) {
     super.onCollisionStart(intersectionPoints, other);
     if (other is PlayerComponent) {
-      onCollected(verse);
-      removeFromParent();
+      collect();
     }
   }
 }
