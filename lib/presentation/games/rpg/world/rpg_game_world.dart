@@ -12,6 +12,12 @@ import '../models/game_item.dart';
 import '../models/verse_fragment.dart';
 import 'item_component.dart';
 import 'player_component.dart';
+import 'start_screen_component.dart';
+
+enum GameState {
+  start,
+  playing,
+}
 
 class RpgGameWorld extends FlameGame
     with HasCollisionDetection, HasKeyboardHandlerComponents {
@@ -22,8 +28,13 @@ class RpgGameWorld extends FlameGame
   late final JoystickComponent joystick;
   final List<PositionComponent> _mapCollisions = [];
 
+  GameState gameState = GameState.start;
+
   late final SpriteSheet _playerSpriteSheet;
   late final Sprite _itemSprite;
+
+  StartScreenComponent? _startScreen;
+  bool _worldInitialized = false;
 
   RpgGameWorld({required this.verses, required this.onItemCollected});
 
@@ -33,9 +44,25 @@ class RpgGameWorld extends FlameGame
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    
+
     debugMode = false; // Activar para ver hitboxes
-    
+
+    _startScreen = StartScreenComponent();
+    add(_startScreen!);
+  }
+
+  Future<void> startGame() async {
+    if (gameState == GameState.playing) return;
+
+    gameState = GameState.playing;
+    _startScreen?.removeFromParent();
+    await _loadWorld();
+  }
+
+  Future<void> _loadWorld() async {
+    if (_worldInitialized) return;
+    _worldInitialized = true;
+
     // Limpieza agresiva inicial para evitar duplicidades
     world.removeAll(world.children);
     _mapCollisions.clear();
@@ -61,7 +88,7 @@ class RpgGameWorld extends FlameGame
 
     // Pre-cargar el tileset para evitar errores de renderizado
     await images.load('tiles.png');
-    
+
     final tiled = await TiledComponent.load(
       'world_map.tmx',
       Vector2.all(tileSize),
@@ -100,8 +127,8 @@ class RpgGameWorld extends FlameGame
           GameItem(
             verse: verse,
             position: Vector2(
-              (obj.x + obj.width / 2) * scale, 
-              (obj.y + obj.height / 2) * scale
+              (obj.x + obj.width / 2) * scale,
+              (obj.y + obj.height / 2) * scale,
             ),
           ),
         );
@@ -126,15 +153,19 @@ class RpgGameWorld extends FlameGame
     player = PlayerComponent(
       spriteSheet: _playerSpriteSheet,
       mapCollisions: _mapCollisions,
+      // Spawn en el camino central, cerca del cruce
+      // Tile (8, 10) -> centrado en el camino
       position: Vector2(
-        tileSize * 4 * scale + (tileSize * scale) / 2,
-        tileSize * 4 * scale + (tileSize * scale),
+        tileSize * 8 * scale + (tileSize * scale) / 2,
+        tileSize * 10 * scale + (tileSize * scale) / 2,
       ),
       displayScale: scale,
     );
-    
+
     // Verificamos que no haya ya un jugador en el world
-    world.children.whereType<PlayerComponent>().forEach((p) => p.removeFromParent());
+    world.children
+        .whereType<PlayerComponent>()
+        .forEach((p) => p.removeFromParent());
     world.add(player!);
 
     // Cámara siguiendo al jugador
@@ -144,12 +175,12 @@ class RpgGameWorld extends FlameGame
     // Items
     for (final item in items) {
       final comp = ItemComponent(
-          verse: item.verse,
-          onCollected: _handleItemCollected,
-          sprite: _itemSprite,
-          position: item.position,
-          scale: scale,
-        );
+        verse: item.verse,
+        onCollected: _handleItemCollected,
+        sprite: _itemSprite,
+        position: item.position,
+        scale: scale,
+      );
       world.add(comp);
     }
   }
@@ -158,3 +189,4 @@ class RpgGameWorld extends FlameGame
     onItemCollected(verse.id);
   }
 }
+

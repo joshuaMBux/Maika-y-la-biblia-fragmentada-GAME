@@ -32,7 +32,8 @@ class RpgGamePage extends StatefulWidget {
 
 class _RpgGamePageState extends State<RpgGamePage> {
   late final RpgGameBloc bloc;
-  RpgGameWorld? game;
+  late RpgGameWorld game;
+  bool _gameCreated = false;
   VerseFragment? currentVerse;
   Timer? verseTimer;
 
@@ -47,15 +48,6 @@ class _RpgGamePageState extends State<RpgGamePage> {
     verseTimer?.cancel();
     bloc.close();
     super.dispose();
-  }
-
-  void _createGame(List<VerseFragment> verses) {
-    game = RpgGameWorld(
-      verses: verses,
-      onItemCollected: (id) {
-        bloc.add(ItemCollected(id));
-      },
-    );
   }
 
   void _showVerse(VerseFragment verse) {
@@ -78,6 +70,16 @@ class _RpgGamePageState extends State<RpgGamePage> {
       value: bloc,
       child: BlocConsumer<RpgGameBloc, RpgGameState>(
         listener: (context, state) {
+          if (state is RpgGameLoaded && (!_gameCreated || state.collectedCount == 0)) {
+            game = RpgGameWorld(
+              verses: state.verses,
+              onItemCollected: (id) {
+                bloc.add(ItemCollected(id));
+              },
+            );
+            _gameCreated = true;
+          }
+
           if (state is RpgGameLoaded && state.lastCollectedVerse != null) {
             _showVerse(state.lastCollectedVerse!);
           }
@@ -88,63 +90,62 @@ class _RpgGamePageState extends State<RpgGamePage> {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          if (state is RpgGameLoaded) {
-            if (game == null) {
-              _createGame(state.verses);
-            }
-            return Scaffold(
-              body: Stack(
-                children: [
-                  Positioned.fill(child: GameWidget(game: game!)),
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: _HudCounter(
-                      collected: state.collectedCount,
-                      total: state.totalItems,
+
+          return Scaffold(
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: GameWidget(game: game),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: _HudCounter(
+                    collected: state is RpgGameLoaded
+                        ? state.collectedCount
+                        : state is RpgGameCompleted
+                            ? state.verses.length
+                            : 0,
+                    total: state is RpgGameLoaded
+                        ? state.totalItems
+                        : state is RpgGameCompleted
+                            ? state.verses.length
+                            : 0,
+                  ),
+                ),
+                if (currentVerse != null)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _VersePopup(verse: currentVerse!),
                     ),
                   ),
-                  if (currentVerse != null)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: _VersePopup(verse: currentVerse!),
-                      ),
-                    ),
-                  Positioned(
-                    top: 32,
-                    left: 16,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      color: Colors.white,
-                      onPressed: widget.onExit,
-                    ),
+                Positioned(
+                  top: 32,
+                  left: 16,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    color: Colors.white,
+                    onPressed: widget.onExit,
                   ),
-                ],
-              ),
-            );
-          }
-          if (state is RpgGameCompleted) {
-            return Scaffold(
-              body: Stack(
-                children: [
-                  if (game != null)
-                    Positioned.fill(child: GameWidget(game: game!)),
+                ),
+                // Cuando el juego termina, mostramos primero el versículo
+                // (currentVerse != null) y, una vez desaparece el popup,
+                // dejamos ver el overlay de victoria.
+                if (state is RpgGameCompleted && currentVerse == null)
                   _VictoryOverlay(
                     onBackToMenu: widget.onExit,
                     onPlayAgain: () {
                       setState(() {
-                        game = null;
+                        _gameCreated = false;
                       });
                       bloc.add(LoadGame());
                     },
                   ),
-                ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
+              ],
+            ),
+          );
         },
       ),
     );

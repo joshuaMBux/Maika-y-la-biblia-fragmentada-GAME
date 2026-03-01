@@ -26,6 +26,7 @@ class RpgGameBloc extends Bloc<RpgGameEvent, RpgGameState> {
           collectedCount: 0,
           totalItems: verses.length,
           verses: verses,
+          collectedIds: {},
         ),
       );
     } catch (_) {
@@ -34,36 +35,48 @@ class RpgGameBloc extends Bloc<RpgGameEvent, RpgGameState> {
           collectedCount: 0,
           totalItems: 0,
           verses: const [],
+          collectedIds: {},
         ),
       );
     }
   }
 
-  void _onItemCollected(
+  Future<void> _onItemCollected(
     ItemCollected event,
     Emitter<RpgGameState> emit,
-  ) {
+  ) async {
     final current = state;
-    if (current is RpgGameLoaded) {
-      if (current.verses.isEmpty) {
-        emit(current);
-        return;
-      }
-      final verse = current.verses.firstWhere(
-        (v) => v.id == event.verseId,
-        orElse: () => current.verses.first,
-      );
-      final newCount = current.collectedCount + 1;
-      if (newCount >= current.totalItems && current.totalItems > 0) {
-        emit(RpgGameCompleted(current.verses));
-      } else {
-        emit(
-          current.copyWith(
-            collectedCount: newCount,
-            lastCollectedVerse: verse,
-          ),
-        );
-      }
+    if (current is! RpgGameLoaded) return;
+
+    // Evitar duplicados
+    if (current.collectedIds.contains(event.verseId)) return;
+
+    final newCollectedIds = Set<String>.from(current.collectedIds)
+      ..add(event.verseId);
+
+    final verse = current.verses.firstWhere(
+      (v) => v.id == event.verseId,
+      orElse: () => current.verses.isNotEmpty
+          ? current.verses.first
+          : current.verses[0], // Evitar null
+    );
+
+    final newCount = newCollectedIds.length;
+
+    // Siempre emitimos un estado "loaded" con el último versículo
+    // Para que el popup se muestre también en el último fragmento.
+    emit(
+      current.copyWith(
+        collectedCount: newCount,
+        lastCollectedVerse: verse,
+        collectedIds: newCollectedIds,
+      ),
+    );
+
+    // Si ya se recogieron todos, emitimos el estado de "completed"
+    // después, para que la UI pueda primero mostrar el popup.
+    if (newCount >= current.totalItems && current.totalItems > 0) {
+      emit(RpgGameCompleted(current.verses));
     }
   }
 }

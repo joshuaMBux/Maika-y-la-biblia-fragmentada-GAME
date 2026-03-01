@@ -1,116 +1,148 @@
+import 'dart:ui';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/sprite.dart';
 import 'package:flutter/services.dart';
 
+import 'rpg_game_world.dart';
+import 'item_component.dart';
+
 enum PlayerDirection { down, left, right, up }
 
 class PlayerComponent extends SpriteAnimationComponent
-    with KeyboardHandler, CollisionCallbacks, HasGameReference<FlameGame> {
+    with KeyboardHandler, CollisionCallbacks, HasGameReference<RpgGameWorld> {
   final double speed;
-  final List<Rect> collisions;
+  final List<PositionComponent> mapCollisions;
   final SpriteSheet spriteSheet;
 
   Vector2 moveDirection = Vector2.zero();
   PlayerDirection currentDirection = PlayerDirection.down;
 
-  late SpriteAnimation _idleDown;
-  late SpriteAnimation _idleLeft;
-  late SpriteAnimation _idleRight;
-  late SpriteAnimation _idleUp;
-  late SpriteAnimation _walkDown;
-  late SpriteAnimation _walkLeft;
-  late SpriteAnimation _walkRight;
-  late SpriteAnimation _walkUp;
+  late SpriteAnimation walkDown;
+  late SpriteAnimation walkSide;
+  late SpriteAnimation walkUp;
+
+  final double displayScale;
 
   PlayerComponent({
     required this.spriteSheet,
-    required this.collisions,
+    required this.mapCollisions,
     this.speed = 100,
+    this.displayScale = 1.0,
     Vector2? position,
-  }) : super(size: Vector2.all(32), position: position ?? Vector2.zero());
+  }) : super(
+          size: Vector2(32, 48) * displayScale,
+          position: position ?? Vector2.zero(),
+          anchor: Anchor.bottomCenter,
+        );
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _idleDown = spriteSheet.createAnimation(
-      row: 0,
-      stepTime: 0.3,
-      from: 0,
-      to: 1,
-    );
-    _walkDown = spriteSheet.createAnimation(
+    
+    // Pixel art nítido
+    paint.filterQuality = FilterQuality.none;
+
+    walkDown = spriteSheet.createAnimation(
       row: 0,
       stepTime: 0.15,
-      from: 1,
-      to: 5,
-    );
-    _idleLeft = spriteSheet.createAnimation(
-      row: 1,
-      stepTime: 0.3,
       from: 0,
-      to: 1,
+      to: 4,
     );
-    _walkLeft = spriteSheet.createAnimation(
+
+    walkSide = spriteSheet.createAnimation(
       row: 1,
       stepTime: 0.15,
-      from: 1,
-      to: 5,
-    );
-    _idleRight = spriteSheet.createAnimation(
-      row: 2,
-      stepTime: 0.3,
       from: 0,
-      to: 1,
+      to: 4,
     );
-    _walkRight = spriteSheet.createAnimation(
+
+    walkUp = spriteSheet.createAnimation(
       row: 2,
       stepTime: 0.15,
-      from: 1,
-      to: 5,
-    );
-    _idleUp = spriteSheet.createAnimation(
-      row: 3,
-      stepTime: 0.3,
       from: 0,
-      to: 1,
+      to: 4,
     );
-    _walkUp = spriteSheet.createAnimation(
-      row: 3,
-      stepTime: 0.15,
-      from: 1,
-      to: 5,
+
+    animation = walkDown;
+
+    // Hitbox solo en los pies (alineada con Anchor.bottomCenter)
+    // El tamaño es 16x14 escalado. 
+    // Como el padre es Anchor.bottomCenter, la posición 0,0 es el centro de la base.
+    add(
+      RectangleHitbox(
+        size: Vector2(16, 14) * displayScale,
+        anchor: Anchor.bottomCenter,
+        position: Vector2(0, 0),
+      )..collisionType = CollisionType.active,
     );
-    animation = _idleDown;
-    add(RectangleHitbox()..collisionType = CollisionType.active);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    if (moveDirection.length2 > 0) {
+
+    // Priorizar teclado, pero si es cero, usar Joystick
+    if (moveDirection.isZero()) {
+      if (!game.joystick.relativeDelta.isZero()) {
+        moveDirection = game.joystick.relativeDelta;
+        _updateDirectionFromJoystick(game.joystick.relativeDelta);
+      }
+    }
+
+    if (!moveDirection.isZero()) {
       final normalized = moveDirection.normalized();
       final delta = normalized * speed * dt;
       final original = position.clone();
+      
       position.add(Vector2(delta.x, 0));
-      if (_isColliding()) {
+      if (_hasObstacleCollision()) {
         position.x = original.x;
       }
+      
       position.add(Vector2(0, delta.y));
-      if (_isColliding()) {
+      if (_hasObstacleCollision()) {
         position.y = original.y;
       }
+      
       _updateWalkAnimation();
     } else {
       _updateIdleAnimation();
     }
+
+    // Resetear moveDirection para el siguiente frame si viene del teclado
+    // Si viene del joystick, se sobreescribe en el siguiente frame
+    moveDirection = Vector2.zero();
   }
 
-  bool _isColliding() {
-    final rect = Rect.fromLTWH(position.x, position.y, size.x, size.y);
-    for (final other in collisions) {
-      if (rect.overlaps(other)) {
+  void _updateDirectionFromJoystick(Vector2 delta) {
+    if (delta.x.abs() > delta.y.abs()) {
+      currentDirection = delta.x > 0 ? PlayerDirection.right : PlayerDirection.left;
+    } else {
+      currentDirection = delta.y > 0 ? PlayerDirection.down : PlayerDirection.up;
+    }
+  }
+
+  bool _hasObstacleCollision() {
+    final myHitboxes = children.whereType<RectangleHitbox>();
+    if (myHitboxes.isEmpty) return false;
+    
+    final myHitbox = myHitboxes.first;
+    // Usamos el Rect relativo al componente y lo desplazamos a la posición world
+    // Como el anchor es bottomCenter, la posición es la base del personaje.
+    final localRect = myHitbox.toRect();
+    final worldRect = localRect.shift(Offset(position.x, position.y));
+
+    for (final obstacle in mapCollisions) {
+      // Los obstáculos son PositionComponent (Anchor.topLeft)
+      final obsRect = Rect.fromLTWH(
+        obstacle.position.x, 
+        obstacle.position.y, 
+        obstacle.size.x, 
+        obstacle.size.y
+      );
+      if (worldRect.overlaps(obsRect)) {
         return true;
       }
     }
@@ -118,35 +150,47 @@ class PlayerComponent extends SpriteAnimationComponent
   }
 
   void _updateWalkAnimation() {
+    if (currentDirection == PlayerDirection.left) {
+      scale.x = 1; // Sprite base mira a la izquierda
+    } else if (currentDirection == PlayerDirection.right) {
+      scale.x = -1; // Flip horizontal para mirar a la derecha
+    } else {
+      scale.x = 1; // Reset para arriba/abajo
+    }
+
     switch (currentDirection) {
       case PlayerDirection.down:
-        animation = _walkDown;
+        animation = walkDown;
         break;
       case PlayerDirection.left:
-        animation = _walkLeft;
-        break;
       case PlayerDirection.right:
-        animation = _walkRight;
+        animation = walkSide;
         break;
       case PlayerDirection.up:
-        animation = _walkUp;
+        animation = walkUp;
         break;
     }
   }
 
   void _updateIdleAnimation() {
+    if (currentDirection == PlayerDirection.left) {
+      scale.x = 1;
+    } else if (currentDirection == PlayerDirection.right) {
+      scale.x = -1;
+    } else {
+      scale.x = 1;
+    }
+
     switch (currentDirection) {
       case PlayerDirection.down:
-        animation = _idleDown;
+        animation = walkDown; // Usar el primer frame
         break;
       case PlayerDirection.left:
-        animation = _idleLeft;
-        break;
       case PlayerDirection.right:
-        animation = _idleRight;
+        animation = walkSide;
         break;
       case PlayerDirection.up:
-        animation = _idleUp;
+        animation = walkUp;
         break;
     }
   }

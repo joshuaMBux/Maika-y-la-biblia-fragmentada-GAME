@@ -11,11 +11,13 @@ class RpgGameLoaded extends RpgGameState {
   final int totalItems;
   final List<VerseFragment> verses;
   final VerseFragment? lastCollectedVerse;
+  final Set<String> collectedIds;
 
   RpgGameLoaded({
     required this.collectedCount,
     required this.totalItems,
     required this.verses,
+    required this.collectedIds,
     this.lastCollectedVerse,
   });
 
@@ -24,12 +26,14 @@ class RpgGameLoaded extends RpgGameState {
     int? totalItems,
     List<VerseFragment>? verses,
     VerseFragment? lastCollectedVerse,
+    Set<String>? collectedIds,
   }) {
     return RpgGameLoaded(
       collectedCount: collectedCount ?? this.collectedCount,
       totalItems: totalItems ?? this.totalItems,
       verses: verses ?? this.verses,
       lastCollectedVerse: lastCollectedVerse,
+      collectedIds: collectedIds ?? this.collectedIds,
     );
   }
 }
