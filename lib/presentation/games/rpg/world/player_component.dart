@@ -1,12 +1,10 @@
 import 'dart:ui';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
 import 'package:flame/sprite.dart';
 import 'package:flutter/services.dart';
 
 import 'rpg_game_world.dart';
-import 'item_component.dart';
 
 enum PlayerDirection { down, left, right, up }
 
@@ -15,8 +13,15 @@ class PlayerComponent extends SpriteAnimationComponent
   final double speed;
   final List<PositionComponent> mapCollisions;
   final SpriteSheet spriteSheet;
+  final Rect? movementBounds;
 
   Vector2 moveDirection = Vector2.zero();
+  /// Dirección de mirada del jugador, normalizada.
+  /// Por defecto mira hacia abajo.
+  Vector2 facingDirection = Vector2(0, 1);
+
+  bool hasShield = false;
+
   PlayerDirection currentDirection = PlayerDirection.down;
 
   late SpriteAnimation walkDown;
@@ -30,6 +35,7 @@ class PlayerComponent extends SpriteAnimationComponent
     required this.mapCollisions,
     this.speed = 100,
     this.displayScale = 1.0,
+    this.movementBounds,
     Vector2? position,
   }) : super(
           size: Vector2(32, 48) * displayScale,
@@ -83,16 +89,20 @@ class PlayerComponent extends SpriteAnimationComponent
   void update(double dt) {
     super.update(dt);
 
+    // Actualizar dirección de mirada desde el joystick si hay input.
     // Priorizar teclado, pero si es cero, usar Joystick
     if (moveDirection.isZero()) {
       if (!game.joystick.relativeDelta.isZero()) {
-        moveDirection = game.joystick.relativeDelta;
-        _updateDirectionFromJoystick(game.joystick.relativeDelta);
+        final joystickDelta = game.joystick.relativeDelta;
+        moveDirection = joystickDelta;
+        _updateDirectionFromJoystick(joystickDelta);
       }
     }
 
     if (!moveDirection.isZero()) {
       final normalized = moveDirection.normalized();
+      // facingDirection siempre sigue la última dirección de movimiento
+      facingDirection = normalized;
       final delta = normalized * speed * dt;
       final original = position.clone();
       
@@ -106,6 +116,7 @@ class PlayerComponent extends SpriteAnimationComponent
         position.y = original.y;
       }
       
+      _clampToBounds();
       _updateWalkAnimation();
     } else {
       _updateIdleAnimation();
@@ -117,6 +128,10 @@ class PlayerComponent extends SpriteAnimationComponent
   }
 
   void _updateDirectionFromJoystick(Vector2 delta) {
+    if (!delta.isZero()) {
+      facingDirection = delta.normalized();
+    }
+
     if (delta.x.abs() > delta.y.abs()) {
       currentDirection = delta.x > 0 ? PlayerDirection.right : PlayerDirection.left;
     } else {
@@ -147,6 +162,24 @@ class PlayerComponent extends SpriteAnimationComponent
       }
     }
     return false;
+  }
+
+  void _clampToBounds() {
+    if (movementBounds == null) return;
+
+    final bounds = movementBounds!;
+    final halfWidth = size.x / 2;
+    final height = size.y;
+
+    final minX = bounds.left + halfWidth;
+    final maxX = bounds.right - halfWidth;
+    final minY = bounds.top + height;
+    final maxY = bounds.bottom;
+
+    position = Vector2(
+      position.x.clamp(minX, maxX),
+      position.y.clamp(minY, maxY),
+    );
   }
 
   void _updateWalkAnimation() {
@@ -201,17 +234,26 @@ class PlayerComponent extends SpriteAnimationComponent
     if (keysPressed.contains(LogicalKeyboardKey.arrowLeft)) {
       moveDirection.x = -1;
       currentDirection = PlayerDirection.left;
+      facingDirection = Vector2(-1, 0);
     } else if (keysPressed.contains(LogicalKeyboardKey.arrowRight)) {
       moveDirection.x = 1;
       currentDirection = PlayerDirection.right;
+      facingDirection = Vector2(1, 0);
     }
     if (keysPressed.contains(LogicalKeyboardKey.arrowUp)) {
       moveDirection.y = -1;
       currentDirection = PlayerDirection.up;
+      facingDirection = Vector2(0, -1);
     } else if (keysPressed.contains(LogicalKeyboardKey.arrowDown)) {
       moveDirection.y = 1;
       currentDirection = PlayerDirection.down;
+      facingDirection = Vector2(0, 1);
     }
     return true;
+  }
+
+  /// Se llama cuando el jugador recoge el escudo del mapa.
+  void equipShield() {
+    hasShield = true;
   }
 }

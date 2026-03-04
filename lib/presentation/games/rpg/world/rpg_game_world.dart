@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart' show EdgeInsets;
@@ -11,7 +12,10 @@ import 'package:flame_tiled/flame_tiled.dart';
 import '../models/game_item.dart';
 import '../models/verse_fragment.dart';
 import 'item_component.dart';
+import 'enemy_component.dart';
 import 'player_component.dart';
+import 'shield_component.dart';
+import 'shield_pickup_component.dart';
 import 'start_screen_component.dart';
 
 enum GameState {
@@ -32,6 +36,8 @@ class RpgGameWorld extends FlameGame
 
   late final SpriteSheet _playerSpriteSheet;
   late final Sprite _itemSprite;
+  late final Sprite _shieldSprite;
+  late final Sprite _enemySprite;
 
   StartScreenComponent? _startScreen;
   bool _worldInitialized = false;
@@ -150,6 +156,20 @@ class RpgGameWorld extends FlameGame
     print(bookImage.height);
     _itemSprite = Sprite(bookImage);
 
+    final shieldImage = await images.load('shield_gold.png');
+    _shieldSprite = Sprite(shieldImage);
+
+    final enemyImage = await images.load('enemy.png');
+    _enemySprite = Sprite(enemyImage);
+
+    // Proyectil: usamos un sprite pequeño existente (book.png) o un círculo simple.
+    final projectileImage = await images.load('book.png');
+    final projectileSprite = Sprite(projectileImage);
+
+    // Dimensiones reales del mapa en píxeles (ya escaladas).
+    final mapWidth = tileSize * map.width * scale;
+    final mapHeight = tileSize * map.height * scale;
+
     player = PlayerComponent(
       spriteSheet: _playerSpriteSheet,
       mapCollisions: _mapCollisions,
@@ -160,6 +180,7 @@ class RpgGameWorld extends FlameGame
         tileSize * 10 * scale + (tileSize * scale) / 2,
       ),
       displayScale: scale,
+      movementBounds: Rect.fromLTWH(0, 0, mapWidth, mapHeight),
     );
 
     // Verificamos que no haya ya un jugador en el world
@@ -167,6 +188,15 @@ class RpgGameWorld extends FlameGame
         .whereType<PlayerComponent>()
         .forEach((p) => p.removeFromParent());
     world.add(player!);
+
+    // Escudo visual que rota alrededor del jugador cuando está equipado.
+    final shieldVisual = ShieldComponent(
+      player: player!,
+      sprite: _shieldSprite,
+      offsetDistance: 26 * scale,
+      scaleFactor: 1.5 * scale,
+    );
+    player!.add(shieldVisual);
 
     // Cámara siguiendo al jugador
     camera.follow(player!);
@@ -183,6 +213,36 @@ class RpgGameWorld extends FlameGame
       );
       world.add(comp);
     }
+
+    // Spawn aleatorio del escudo en el mapa. El jugador debe recogerlo
+    // para poder hacer parry con el proyectil.
+    final random = Random();
+
+    final shieldPosition = Vector2(
+      random.nextDouble() * (mapWidth - 48) + 24,
+      random.nextDouble() * (mapHeight - 48) + 24,
+    );
+
+    final shieldPickup = ShieldPickupComponent(
+      sprite: _shieldSprite,
+      position: shieldPosition,
+      scale: scale,
+    );
+    world.add(shieldPickup);
+
+    // Enemigo fijo que dispara siempre hacia el jugador.
+    final enemyPosition = Vector2(
+      tileSize * 10 * scale,
+      tileSize * 3 * scale,
+    );
+
+    final enemy = EnemyComponent(
+      sprite: _enemySprite,
+      position: enemyPosition,
+      projectileSprite: projectileSprite,
+    );
+
+    world.add(enemy);
   }
 
   void _handleItemCollected(VerseFragment verse) {
