@@ -1,137 +1,156 @@
 # Maika y la Biblia Fragmentada
 
-Un juego RPG desarrollado en Flutter donde Maika, la protagonista, debe buscar y recolectar los libros perdidos de la Biblia distribuidos por todo el mundo del juego.
+Un juego RPG educativo desarrollado en Flutter donde **Maika**, la protagonista, debe buscar y recolectar los libros perdidos de la Biblia distribuidos por todo el mundo del juego.
 
-## 🎮 Descripción del Juego
+## Descripción del juego
 
-**Maika y la Biblia Fragmentada** es un juego educativo que combina la aventura RPG con el aprendizaje bíblico.
+En **Maika y la Biblia Fragmentada** el mundo ha sido fragmentado y los libros de la Biblia están dispersos por el mapa.  
+La misión del jugador es ayudar a Maika a encontrar estos libros para reconstruir la Biblia completa mientras aprende versículos y contenido bíblico.
 
-### Historia
-El mundo ha sido fragmentado y los libros de la Biblia están dispersos por todo el mapa. Maika, la protagonista, tiene la misión de encontrar estos libros perdidos para reconstruir la Biblia completa.
+### Mecánicas principales
 
-### Mecánica de Juego
-- **Exploración**: Maika explora un mundo abierto buscando libros bíblicos perdidos
-- **Recolección**: Cada libro encontrado se añade a la colección del jugador
-- **Aprendizaje**: Por cada libro encontrado, Maika revela un versículo bíblico, permitiendo al usuario aprender y jugar al mismo tiempo
-- **Progreso**: A medida que se encuentran más libros, se va reconstruyendo la Biblia completa
+- **Exploración**: Maika recorre mapas 2D buscando libros bíblicos.
+- **Recolección**: Cada libro encontrado se añade a la colección del jugador.
+- **Aprendizaje**: Por cada libro se muestra contenido bíblico (versículos/fragmentos).
+- **Progreso**: A medida que se encuentran más libros, se avanza en la reconstrucción de la Biblia.
 
-### Estado del Proyecto
-Este es un **prototipo** desarrollado en Flutter. El objetivo es eventualmente integrar este juego en otra aplicación más grande.
+### Estado del proyecto
 
-## ⚙️ Detalles Técnicos
+Este proyecto se encuentra en fase de **prototipo avanzado** y se utiliza como base para integrarlo dentro de una aplicación más grande.
 
-### Motor y Tecnologías
-- **Motor de Juegos**: Flame Game Engine (Flame - Flutter Game Engine)
-- **Framework**: Flutter
-- **Lenguaje**: Dart
-- **Arquitectura de Estado**: BLoC Pattern (flutter_bloc)
-- **Gestión de Estados**: Cubit/Bloc para gestión del estado del juego
+Ramas relevantes:
 
-### Librerías y Dependencias
-- `flame` - Motor de juegos 2D para Flutter
-- `flutter_bloc` - Gestión de estado reactiva
-- `equatable` - Comparación de objetos en Dart
+- `master`: rama principal del prototipo.
+- `feature/integracion-juego-maika`: rama usada para probar la integración del juego con el proyecto **Maika_APP_estable**.
 
-### Plataformas Soportadas
-- Android (API 21+)
-- iOS
-- macOS
-- Linux
-- Windows
-- Web (HTML5)
+## Detalles técnicos
 
-## 🏗️ Arquitectura del Proyecto
+### Motor y tecnologías
 
-```
+- **Motor de juego**: Flame (Flutter Game Engine).
+- **Framework**: Flutter.
+- **Lenguaje**: Dart.
+- **Gestión de estado**: BLoC / Cubit (`flutter_bloc`).
+- **Plataformas objetivo**:
+  - Android
+  - iOS
+  - Web
+  - Windows
+  - Linux
+  - macOS
+
+### Dependencias principales
+
+- `flame` – motor de juegos 2D para Flutter.
+- `flutter_bloc` – gestión de estado reactiva.
+- `equatable` – comparación de objetos de forma sencilla.
+
+## Arquitectura del proyecto
+
+Estructura general del código fuente:
+
+```text
 lib/
-├── main.dart                      # Punto de entrada de la aplicación
-└── presentation/
-    └── games/
-        └── rpg/
-            ├── bloc/              # Lógica de estado del juego (BLoC)
-            │   ├── rpg_game_bloc.dart    # Gestor principal del estado
-            │   ├── rpg_game_event.dart   # Eventos del juego
-            │   └── rpg_game_state.dart   # Estados del juego
-            ├── data/              # Repositorio de datos bíblicos
-            │   └── bible_repository.dart # Acceso a datos de versículos
-            ├── models/            # Modelos de datos
-            │   ├── game_item.dart        # Modelo de items/libros
-            │   └── verse_fragment.dart   # Modelo de fragmentos de versículos
-            ├── pages/             # Páginas/Pantallas del juego
-            │   └── rpg_game_page.dart    # Pantalla principal del juego
-            └── world/             # Componentes del mundo del juego
-                ├── item_component.dart   # Componente de items
-                ├── player_component.dart # Componente del jugador (Maika)
-                └── rpg_game_world.dart    # Mundo/Map del juego
+  main.dart                          # Punto de entrada de la app
+  presentation/
+    games/
+      rpg/
+        bloc/                        # Lógica de estado del juego (BLoC)
+          rpg_game_bloc.dart
+          rpg_game_event.dart
+          rpg_game_state.dart
+        data/                        # Repositorios y datos bíblicos
+          bible_repository.dart
+        models/                      # Modelos de dominio
+          game_item.dart
+          verse_fragment.dart
+        pages/                       # Pantallas del juego
+          rpg_game_page.dart
+        world/                       # Componentes del mundo del juego
+          player_component.dart
+          item_component.dart
+          projectile_component.dart
+          rpg_game_world.dart
+          heart_hud_component.dart   # HUD de vidas/corazones
 ```
 
-## 🎯 Características Técnicas Implementadas
+## Assets del proyecto
 
-- **Sistema de Personajes**: Componente de jugador con movimientos y acciones
-- **Sistema de Items**: Recolección de objetos (libros bíblicos)
-- **Sistema de Mapas**: Mapas tileados (Tiled TMX)
-- **Sistema de Sprites**: Gráficos 2D para personajes y entorno
-- **Motor de Audio**: Soporte para música de fondo (OGG)
-- **Estado del Juego**: Persistencia de progreso del jugador
-
-## 📂 Assets del Proyecto
-
-```
+```text
 assets/
-├── images/                # Imágenes del juego
-│   ├── character.png    # Sprites del personaje
-│   ├── tiles.png        # Tiles del mundo
-│   ├── libros.png       # Iconos de libros
-│   ├── Overworld.png   # Sprites del mundo exterior
-│   ├── cave.png         # Sprites de cuevas
-│   ├── Inner.png        # Sprites de interiores
-│   ├── objects.png      # Objetos del juego
-│   ├── font.png         # Fuente del juego
-│   └── NPC_test.png     # Sprites de NPC
-└── tiles/
-    └── world_map.tmx    # Mapa del mundo (formato Tiled)
+  images/                      # Imágenes y sprites del juego
+    maika.png                 # Sprite principal de Maika
+    book.png                  # Icono de libro recolectable
+    item_book_red.png         # Variantes de libros
+    ball1.png                 # Proyectiles
+    enemy.png                 # Sprites de enemigos
+    shield_gold.png           # Icono de escudo
+    tiles.png                 # Tiles del mundo
+    libros.png                # Iconos de libros
+    Overworld.png             # Sprites del mundo exterior
+    cave.png                  # Sprites de cuevas
+    Inner.png                 # Sprites de interiores
+    objects.png               # Objetos del juego
+    font.png                  # Fuente pixel-art del juego
+    log.png                   # Elementos del escenario
+    NPC_test.png              # Sprites de NPC
+  tiles/
+    world_map.tmx             # Mapa del mundo (formato Tiled)
+  audio/
+    DarkWinds.ogg             # Música de fondo principal
 ```
 
-## 🚀 Cómo Ejecutar
+## Cómo ejecutar
+
+Comandos básicos para desarrollo:
 
 ```bash
 # Instalar dependencias
 flutter pub get
 
-# Ejecutar en modo desarrollo
+# Ejecutar en modo debug en un dispositivo/emulador
 flutter run
-
-# Construir para Android
-flutter build apk
-
-# Construir para iOS
-flutter build ios
-
-# Construir para Web
-flutter build web
-
-# Construir para Linux
-flutter build linux
 ```
 
-## 📋 Requisitos
+Construcciones típicas:
 
-- **Flutter SDK**: 3.x o superior
-- **Dart SDK**: 3.x o superior
-- **Versión mínima de Android**: API 21 (Android 5.0)
+```bash
+# Android
+flutter build apk
 
-## 🎨 Estilo de Código
+# iOS
+flutter build ios
 
-El proyecto sigue las mejores prácticas de Flutter:
-- Clean Architecture
-- Patrón BLoC para gestión de estado
-- Separación de responsabilidades (UI / Lógica / Datos)
-- Código limpio y documentado
+# Web
+flutter build web
 
-## 👤 Autores
+# Linux
+flutter build linux
 
-Desarrollado por joshuaMBux
+# Windows
+flutter build windows
+```
 
-## 📄 Licencia
+## Requisitos
 
-Este proyecto es un prototipo para futura integración en otra aplicación.
+- **Flutter SDK**: 3.x o superior.
+- **Dart SDK**: 3.x o superior.
+- **Android**: API 21 o superior para builds móviles.
+
+## Estilo de código
+
+El proyecto sigue buenas prácticas de Flutter:
+
+- Separación de responsabilidades entre UI, lógica y datos.
+- Uso de BLoC/Cubit para el estado del juego.
+- Código orientado a ser reutilizable y fácil de probar.
+
+## Autor
+
+Proyecto desarrollado por **joshuaMBux**.
+
+## Notas
+
+Este repositorio se utiliza como base para integrar el juego dentro de la aplicación principal de Maika.  
+La rama `feature/integracion-juego-maika` puede incluir cambios experimentales pensados específicamente para esa integración.
+

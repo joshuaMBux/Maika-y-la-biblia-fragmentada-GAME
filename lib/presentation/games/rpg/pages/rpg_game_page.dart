@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -46,6 +47,7 @@ class _RpgGamePageState extends State<RpgGamePage> {
   @override
   void dispose() {
     verseTimer?.cancel();
+    FlameAudio.bgm.stop();
     bloc.close();
     super.dispose();
   }
@@ -70,11 +72,15 @@ class _RpgGamePageState extends State<RpgGamePage> {
       value: bloc,
       child: BlocConsumer<RpgGameBloc, RpgGameState>(
         listener: (context, state) {
-          if (state is RpgGameLoaded && (!_gameCreated || state.collectedCount == 0)) {
+          if (state is RpgGameLoaded &&
+              (!_gameCreated || state.collectedCount == 0)) {
             game = RpgGameWorld(
               verses: state.verses,
               onItemCollected: (id) {
                 bloc.add(ItemCollected(id));
+              },
+              onPlayerDead: () {
+                bloc.add(PlayerDied());
               },
             );
             _gameCreated = true;
@@ -132,9 +138,10 @@ class _RpgGamePageState extends State<RpgGamePage> {
                 ),
                 // Cuando el juego termina, mostramos primero el versículo
                 // (currentVerse != null) y, una vez desaparece el popup,
-                // dejamos ver el overlay de victoria.
+                // dejamos ver el overlay final.
                 if (state is RpgGameCompleted && currentVerse == null)
                   _VictoryOverlay(
+                    isDeath: state.isDeath,
                     onBackToMenu: widget.onExit,
                     onPlayAgain: () {
                       setState(() {
@@ -170,9 +177,9 @@ class _HudCounter extends StatelessWidget {
       child: Text(
         'Fragmentos: $collected/$total',
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }
@@ -201,9 +208,9 @@ class _VersePopup extends StatelessWidget {
           Text(
             verse.reference,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -221,10 +228,12 @@ class _VersePopup extends StatelessWidget {
 class _VictoryOverlay extends StatelessWidget {
   final VoidCallback? onBackToMenu;
   final VoidCallback onPlayAgain;
+  final bool isDeath;
 
   const _VictoryOverlay({
     required this.onBackToMenu,
     required this.onPlayAgain,
+    this.isDeath = false,
   });
 
   @override
@@ -243,7 +252,9 @@ class _VictoryOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '¡Has reunido todos los fragmentos!',
+                isDeath
+                    ? 'Maika se quedó sin corazones'
+                    : '¡Has reunido todos los fragmentos!',
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -271,3 +282,4 @@ class _VictoryOverlay extends StatelessWidget {
     );
   }
 }
+
