@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flame_audio/flame_audio.dart';
 
 import 'presentation/games/rpg/pages/rpg_game_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FlameAudio.bgm.initialize();
   runApp(const MyApp());
 }
 

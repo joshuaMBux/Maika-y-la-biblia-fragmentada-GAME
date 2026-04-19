@@ -132,7 +132,7 @@ class ProjectileComponent extends SpriteComponent
 
     // Colisión directa con el jugador (sin escudo / mal ángulo)
     if (other is PlayerComponent) {
-      // Aquí podríamos aplicar daño al jugador; por ahora solo lo eliminamos.
+      other.takeHit();
       removeFromParent();
       return;
     }

@@ -40,6 +40,9 @@ class RpgGameLoaded extends RpgGameState {
 
 class RpgGameCompleted extends RpgGameState {
   final List<VerseFragment> verses;
+  /// true si el juego terminó porque el jugador murió (se quedó sin corazones).
+  /// false si terminó porque se recogieron todos los fragmentos.
+  final bool isDeath;
 
-  RpgGameCompleted(this.verses);
+  RpgGameCompleted(this.verses, {this.isDeath = false});
 }

@@ -22,6 +22,11 @@ class PlayerComponent extends SpriteAnimationComponent
 
   bool hasShield = false;
 
+  /// Vida del jugador en corazones (5 por defecto).
+  final int maxHearts = 5;
+  int currentHearts = 5;
+  bool isDead = false;
+
   PlayerDirection currentDirection = PlayerDirection.down;
 
   late SpriteAnimation walkDown;
@@ -255,5 +260,22 @@ class PlayerComponent extends SpriteAnimationComponent
   /// Se llama cuando el jugador recoge el escudo del mapa.
   void equipShield() {
     hasShield = true;
+  }
+
+  /// Aplica daño al jugador cuando es alcanzado por un proyectil enemigo.
+  void takeHit() {
+    if (currentHearts <= 0 || isDead) {
+      return;
+    }
+    currentHearts -= 1;
+    if (currentHearts < 0) {
+      currentHearts = 0;
+    }
+
+    if (currentHearts <= 0 && !isDead) {
+      isDead = true;
+      // Avisamos al mundo para que notifique al BLoC que el jugador ha muerto.
+      game.onPlayerDead();
+    }
   }
 }

@@ -12,6 +12,7 @@ class RpgGameBloc extends Bloc<RpgGameEvent, RpgGameState> {
   RpgGameBloc({required this.loadVerses}) : super(RpgGameInitial()) {
     on<LoadGame>(_onLoadGame);
     on<ItemCollected>(_onItemCollected);
+    on<PlayerDied>(_onPlayerDied);
   }
 
   Future<void> _onLoadGame(
@@ -76,7 +77,18 @@ class RpgGameBloc extends Bloc<RpgGameEvent, RpgGameState> {
     // Si ya se recogieron todos, emitimos el estado de "completed"
     // después, para que la UI pueda primero mostrar el popup.
     if (newCount >= current.totalItems && current.totalItems > 0) {
-      emit(RpgGameCompleted(current.verses));
+      emit(RpgGameCompleted(current.verses, isDeath: false));
+    }
+  }
+
+  Future<void> _onPlayerDied(
+    PlayerDied event,
+    Emitter<RpgGameState> emit,
+  ) async {
+    final current = state;
+    if (current is RpgGameLoaded) {
+      // Reutilizamos la misma pantalla final que cuando se recogen todos los libros.
+      emit(RpgGameCompleted(current.verses, isDeath: true));
     }
   }
 }

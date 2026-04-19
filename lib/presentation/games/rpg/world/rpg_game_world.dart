@@ -8,12 +8,14 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/sprite.dart';
 import 'package:flame_tiled/flame_tiled.dart';
+import 'package:flame_audio/flame_audio.dart';
 
 import '../models/game_item.dart';
 import '../models/verse_fragment.dart';
 import 'item_component.dart';
 import 'enemy_component.dart';
 import 'player_component.dart';
+import 'heart_hud_component.dart';
 import 'shield_component.dart';
 import 'shield_pickup_component.dart';
 import 'start_screen_component.dart';
@@ -27,6 +29,7 @@ class RpgGameWorld extends FlameGame
     with HasCollisionDetection, HasKeyboardHandlerComponents {
   final List<VerseFragment> verses;
   final void Function(String verseId) onItemCollected;
+  final void Function() onPlayerDead;
 
   PlayerComponent? player;
   late final JoystickComponent joystick;
@@ -42,7 +45,11 @@ class RpgGameWorld extends FlameGame
   StartScreenComponent? _startScreen;
   bool _worldInitialized = false;
 
-  RpgGameWorld({required this.verses, required this.onItemCollected});
+  RpgGameWorld({
+    required this.verses,
+    required this.onItemCollected,
+    required this.onPlayerDead,
+  });
 
   @override
   Color backgroundColor() => const Color(0xFF2d5a27); // Verde hierba
@@ -53,8 +60,7 @@ class RpgGameWorld extends FlameGame
 
     debugMode = false; // Activar para ver hitboxes
 
-    _startScreen = StartScreenComponent();
-    add(_startScreen!);
+    await startGame();
   }
 
   Future<void> startGame() async {
@@ -62,6 +68,14 @@ class RpgGameWorld extends FlameGame
 
     gameState = GameState.playing;
     _startScreen?.removeFromParent();
+
+    if (!FlameAudio.bgm.isPlaying) {
+      FlameAudio.bgm.play(
+        'DarkWinds.ogg',
+        volume: 0.4,
+      );
+    }
+
     await _loadWorld();
   }
 
@@ -119,41 +133,14 @@ class RpgGameWorld extends FlameGame
       }
     }
 
-    // Fragmentos escalados
-    final fragmentsLayer = map.layerByName('fragments') as ObjectGroup?;
-    final items = <GameItem>[];
-    if (fragmentsLayer != null) {
-      final objects = fragmentsLayer.objects;
-      final count =
-          objects.length < verses.length ? objects.length : verses.length;
-      for (var i = 0; i < count; i++) {
-        final obj = objects[i];
-        final verse = verses[i];
-        items.add(
-          GameItem(
-            verse: verse,
-            position: Vector2(
-              (obj.x + obj.width / 2) * scale,
-              (obj.y + obj.height / 2) * scale,
-            ),
-          ),
-        );
-      }
-    }
-
-    // Jugador
+    // Jugador y sprites
     final characterImage = await images.load('maika.png');
     _playerSpriteSheet = SpriteSheet(
       image: characterImage,
       srcSize: Vector2(256, 341.33), // 1024 / 4 x 1024 / 3
     );
+
     final bookImage = await images.load('item_book_red.png');
-    // Verificación temporal de tamaño real del sprite
-    // (eliminar estos prints cuando esté confirmado)
-    // ignore: avoid_print
-    print(bookImage.width);
-    // ignore: avoid_print
-    print(bookImage.height);
     _itemSprite = Sprite(bookImage);
 
     final shieldImage = await images.load('shield_gold.png');
@@ -162,14 +149,61 @@ class RpgGameWorld extends FlameGame
     final enemyImage = await images.load('enemy.png');
     _enemySprite = Sprite(enemyImage);
 
-    // Proyectil: usamos un sprite pequeño existente (book.png) o un círculo simple.
-    final projectileImage = await images.load('book.png');
+    // Proyectil: usamos ball1.png como sprite de la bala.
+    final projectileImage = await images.load('ball1.png');
     final projectileSprite = Sprite(projectileImage);
 
     // Dimensiones reales del mapa en píxeles (ya escaladas).
     final mapWidth = tileSize * map.width * scale;
     final mapHeight = tileSize * map.height * scale;
 
+    // RNG compartido para ítems y escudo.
+    final random = Random();
+
+    // Libros (fragmentos) colocados de forma aleatoria por el mapa,
+    // evitando bordes y que queden demasiado juntos.
+    final items = <GameItem>[];
+    final positions = <Vector2>[];
+    final desiredCount = verses.length < 7 ? verses.length : 7;
+
+    const double marginTiles = 2; // margen de 2 tiles por lado
+    final double marginX = marginTiles * tileSize * scale;
+    final double marginY = marginTiles * tileSize * scale;
+    final double minDistance = tileSize * scale * 3; // separación mínima
+
+    for (var i = 0; i < desiredCount; i++) {
+      Vector2 candidate = Vector2.zero();
+      for (var attempt = 0; attempt < 20; attempt++) {
+        final x =
+            marginX + random.nextDouble() * (mapWidth - marginX * 2);
+        final y =
+            marginY + random.nextDouble() * (mapHeight - marginY * 2);
+        final pos = Vector2(x, y);
+
+        var tooClose = false;
+        for (final existing in positions) {
+          if (existing.distanceTo(pos) < minDistance) {
+            tooClose = true;
+            break;
+          }
+        }
+
+        candidate = pos;
+        if (!tooClose) {
+          break;
+        }
+      }
+
+      positions.add(candidate);
+      items.add(
+        GameItem(
+          verse: verses[i],
+          position: candidate,
+        ),
+      );
+    }
+
+    // Jugador
     player = PlayerComponent(
       spriteSheet: _playerSpriteSheet,
       mapCollisions: _mapCollisions,
@@ -198,11 +232,16 @@ class RpgGameWorld extends FlameGame
     );
     player!.add(shieldVisual);
 
-    // Cámara siguiendo al jugador
+    // HUD de corazones del jugador (5 corazones por defecto).
+    camera.viewport.add(HeartHudComponent());
+
+    // Cámara siguiendo al jugador, con un pequeño offset hacia arriba
+    // para ver un poco más de mapa por delante del personaje.
+    camera.viewfinder.anchor = const Anchor(0.5, 0.4);
     camera.follow(player!);
     camera.viewfinder.zoom = 1.0; // Usamos escala manual en los componentes
 
-    // Items
+    // Items (libros) en el mundo
     for (final item in items) {
       final comp = ItemComponent(
         verse: item.verse,
@@ -216,8 +255,6 @@ class RpgGameWorld extends FlameGame
 
     // Spawn aleatorio del escudo en el mapa. El jugador debe recogerlo
     // para poder hacer parry con el proyectil.
-    final random = Random();
-
     final shieldPosition = Vector2(
       random.nextDouble() * (mapWidth - 48) + 24,
       random.nextDouble() * (mapHeight - 48) + 24,

@@ -24,6 +24,21 @@ class BibleRepository {
         reference: 'Romanos 8:28',
         text: 'A los que aman a Dios, todas las cosas les ayudan a bien.',
       ),
+      VerseFragment(
+        id: 'fil4_13',
+        reference: 'Filipenses 4:13',
+        text: 'Todo lo puedo en Cristo que me fortalece.',
+      ),
+      VerseFragment(
+        id: 'sal27_1',
+        reference: 'Salmos 27:1',
+        text: 'Jehová es mi luz y mi salvación; ¿de quién temeré?',
+      ),
+      VerseFragment(
+        id: 'jer29_11',
+        reference: 'Jeremías 29:11',
+        text: 'Porque yo sé los planes que tengo para ustedes, dice el Señor.',
+      ),
     ];
   }
 }
